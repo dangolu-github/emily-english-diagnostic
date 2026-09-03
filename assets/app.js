@@ -55,6 +55,21 @@
     }));
   }
   function answeredCount(values = answers()) { return Object.values(values).filter((value) => String(value).trim()).length; }
+  const itemById = new Map(items.map((item) => [item.id, item]));
+  function percent(value, total) {
+    if (!total) return "—";
+    return `${(Number(value) / Number(total) * 100).toFixed(1)}%`;
+  }
+  function displayAnswer(itemId, value) {
+    const text = String(value || "").trim();
+    if (!text) return "未作答";
+    const item = itemById.get(itemId);
+    if (item && item.type === "mc" && Array.isArray(item.options)) {
+      const index = item.options.indexOf(text);
+      if (index >= 0) return `${letters[index]}. ${text}`;
+    }
+    return text;
+  }
   function updateProgress(values = answers()) {
     const count = answeredCount(values);
     document.getElementById("progress-count").textContent = `${count} / ${exam.total} answered`;
@@ -148,6 +163,17 @@
   });
 
   function renderResult(result) {
+    const details = Array.isArray(result.details) ? result.details : [];
+    const answered = details.filter((detail) => String(detail.submitted || "").trim()).length;
+    const unanswered = Math.max(0, Number(result.total) - answered);
+    const reviewItems = details.filter((detail) => !detail.correct);
+    const reviewMarkup = reviewItems.length
+      ? `<section class="mistake-review" aria-labelledby="mistake-review-title"><h3 id="mistake-review-title">错题批改</h3><p class="small">共 ${reviewItems.length} 题未得分，其中 ${unanswered} 题未作答。选择题显示所选项和正确项。</p><div class="mistake-list">${reviewItems.map((detail) => {
+          const item = itemById.get(detail.id);
+          const isChoice = item && item.type === "mc";
+          return `<article class="mistake-card"><div class="mistake-heading"><strong>${escapeHtml(detail.id)}</strong><span>${escapeHtml(detail.section)}</span></div><p class="mistake-prompt">${escapeHtml(item ? item.prompt : detail.id)}</p><div class="answer-comparison"><div><span>${isChoice ? "你的选择" : "你的作答"}</span><strong>${escapeHtml(displayAnswer(detail.id, detail.submitted))}</strong></div><div><span>${isChoice ? "正确选项" : "参考答案"}</span><strong>${escapeHtml(displayAnswer(detail.id, detail.answer))}</strong></div></div><p class="mistake-explanation"><strong>解析：</strong>${escapeHtml(detail.explanation)}</p></article>`;
+        }).join("")}</div></section>`
+      : `<section class="mistake-review"><h3>错题批改</h3><p>本次没有错题或未作答题。</p></section>`;
     document.body.classList.add("submitted");
     fields.forEach((field) => { field.disabled = true; });
     document.querySelectorAll("audio").forEach((audio) => { audio.pause(); });
@@ -155,7 +181,7 @@
     status.textContent = result.duplicate ? "已恢复原提交回执。" : "提交成功，已完成自动批改。";
     const panel = document.getElementById("result-panel");
     panel.hidden = false;
-    panel.innerHTML = `<p class="eyebrow">SUBMISSION RECEIPT</p><h2>${result.score} / ${result.total}</h2><p class="interpretation">${escapeHtml(result.interpretation)}</p><div class="result-grid"><div><strong>${result.score}</strong><span>Total</span></div>${["Grammar","Vocabulary","Reading","Listening"].map((name) => `<div><strong>${result.sectionScores[name]}/12</strong><span>${name}</span></div>`).join("")}</div><p class="small">Receipt: ${new Date(result.receiptTime).toLocaleString()} · Attempt ${escapeHtml(result.attemptId.slice(-8))}</p><p>下面每题都显示本次答案、可接受答案和原因。一次摸底不等于等级证书，Lucy 会结合四部分表现决定下一步。</p><button class="button button-secondary" type="button" id="print-result">Print / Save PDF</button>`;
+    panel.innerHTML = `<p class="eyebrow">SUBMISSION RECEIPT</p><h2>${result.score} / ${result.total}</h2><div class="result-overview"><div><strong>${percent(result.score, result.total)}</strong><span>总得分率</span></div><div><strong>${percent(result.score, answered)}</strong><span>已作答正确率</span></div><div><strong>${answered} / ${result.total}</strong><span>已作答</span></div><div><strong>${unanswered}</strong><span>未作答</span></div></div><p class="interpretation">${escapeHtml(result.interpretation)}</p><h3 class="result-subheading">分项得分</h3><div class="result-grid">${["Grammar","Vocabulary","Reading","Listening"].map((name) => `<div><strong>${result.sectionScores[name]}/12</strong><span>${name} · ${percent(result.sectionScores[name], 12)}</span></div>`).join("")}</div><p class="small">Receipt: ${new Date(result.receiptTime).toLocaleString()} · Attempt ${escapeHtml(result.attemptId.slice(-8))}</p><p>总得分率按全部题目计算；已作答正确率只计算已经填写的题目。一次摸底不等于等级证书，Lucy 会结合四部分表现决定下一步。</p>${reviewMarkup}<button class="button button-secondary" type="button" id="print-result">Print / Save PDF</button>`;
     document.getElementById("print-result").addEventListener("click", () => window.print());
     result.details.forEach((detail) => {
       const box = document.querySelector(`[data-question="${detail.id}"]`);
@@ -163,7 +189,10 @@
       if (!box || !feedback) return;
       box.classList.add(detail.correct ? "correct" : "incorrect");
       feedback.hidden = false;
-      feedback.innerHTML = `<p><strong>${detail.correct ? "✓ Correct" : "✗ Incorrect"}</strong></p><p>Your answer: ${escapeHtml(detail.submitted || "No answer")}</p><p>Accepted answer: ${escapeHtml(detail.answer)}</p><p>${escapeHtml(detail.explanation)}</p>`;
+      const item = itemById.get(detail.id);
+      const isChoice = item && item.type === "mc";
+      const resultLabel = detail.correct ? "✓ 正确" : (String(detail.submitted || "").trim() ? "✗ 错误" : "— 未作答");
+      feedback.innerHTML = `<p><strong>${resultLabel}</strong></p><p>${isChoice ? "你的选择" : "你的作答"}：${escapeHtml(displayAnswer(detail.id, detail.submitted))}</p>${detail.correct ? "" : `<p>${isChoice ? "正确选项" : "参考答案"}：${escapeHtml(displayAnswer(detail.id, detail.answer))}</p><p><strong>解析：</strong>${escapeHtml(detail.explanation)}</p>`}`;
     });
     panel.scrollIntoView({behavior:"smooth",block:"start"});
   }
