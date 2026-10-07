@@ -1,0 +1,14 @@
+(function(){
+ const config=JSON.parse(document.getElementById('paper-resource-config').textContent),key='emily-diagnostic-paper-session-v1';
+ const button=document.createElement('button');button.textContent='Edit annotations';button.type='button';button.className='paper-start';button.style.cssText='position:fixed;bottom:16px;right:16px;z-index:1000;background:#285d48;color:white;border-radius:22px;padding:12px 18px';document.body.append(button);
+ const style=document.createElement('style');style.textContent='@media print{.paper-start{display:none!important}}';document.head.append(style);
+ async function call(action,payload={}){const r=await fetch(window.EMILY_SUBMISSION_ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...payload,action}),signal:AbortSignal.timeout(45000)});const result=await r.json();if(!result.ok)throw Error(result.error||'Could not save annotations.');return result;}
+ function signIn(){return new Promise((resolve,reject)=>{const dialog=document.createElement('dialog');dialog.innerHTML='<form><h2>Open your annotations</h2><label>Website password <input type="password" required autocomplete="current-password"></label><p role="status"></p><button>Continue</button><button type="button" data-cancel>Cancel</button></form>';document.body.append(dialog);dialog.showModal();const close=()=>{dialog.close();dialog.remove();reject(Error('Sign-in cancelled.'));};dialog.querySelector('[data-cancel]').onclick=close;dialog.oncancel=e=>{e.preventDefault();close();};dialog.querySelector('form').onsubmit=async e=>{e.preventDefault();const input=dialog.querySelector('input'),submit=dialog.querySelector('button');submit.disabled=true;try{const r=await call('paperSignIn',{password:input.value});input.value='';sessionStorage.setItem(key,r.token);dialog.close();dialog.remove();resolve(r.token);}catch(error){dialog.querySelector('[role=status]').textContent=error.message;submit.disabled=false;}};});}
+ button.onclick=async()=>{button.disabled=true;try{
+  let token=sessionStorage.getItem(key);if(token){try{await call('getPaperAnnotations',{resourceId:config.resourceId,baseline:config.baseline,accessToken:token});}catch{token=null;}}
+  if(!token)token=await signIn();
+  const data=document.createElement('script');data.type='application/json';data.id='html-ink-data-v2';data.textContent=JSON.stringify(config.state);document.body.append(data);
+  globalThis.__paperPortalConfig={...config,accessToken:token,rpc:(action,payload)=>call(action,payload)};
+  const script=document.createElement('script');script.src='../../assets/paper-editor.js?v=20261007';script.onload=()=>button.remove();script.onerror=()=>{button.disabled=false;button.textContent='Could not open · Try again';};document.body.append(script);
+ }catch(error){button.disabled=false;button.textContent='Edit annotations';if(error.message!=='Sign-in cancelled.')alert(error.message);}};
+})();
