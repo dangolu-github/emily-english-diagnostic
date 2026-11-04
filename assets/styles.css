@@ -5,3 +5,125 @@
 .result-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}.result-overview div{padding:13px;border-radius:12px;background:#f0f6f4;text-align:center}.result-overview strong{display:block;font-size:1.45rem;color:var(--navy)}.result-overview span{font-size:.78rem;color:var(--muted)}.result-subheading{margin:24px 0 4px}.result-panel .result-grid{grid-template-columns:repeat(4,minmax(0,1fr));margin:10px 0 18px}.mistake-review{margin:28px 0 20px;padding-top:22px;border-top:1px solid var(--line)}.mistake-review h3{font-size:1.5rem;margin:0}.mistake-list{display:grid;gap:12px;margin:16px 0}.mistake-card{padding:16px 18px;border:1px solid #d88b90;border-radius:14px;background:var(--redwash)}.mistake-heading{display:flex;justify-content:space-between;gap:12px;align-items:center}.mistake-heading strong{color:var(--red)}.mistake-heading span{font-size:.82rem;color:var(--muted)}.mistake-prompt{margin:8px 0 12px;font-weight:750}.answer-comparison{display:grid;grid-template-columns:1fr 1fr;gap:10px}.answer-comparison div{padding:11px 12px;border-radius:10px;background:#fff}.answer-comparison span{display:block;color:var(--muted);font-size:.78rem}.answer-comparison strong{display:block;margin-top:2px}.mistake-explanation{margin:12px 0 0}.mistake-review+.button{margin-top:4px}
 @media(max-width:720px){.result-overview,.result-panel .result-grid,.answer-comparison{grid-template-columns:1fr}.result-grid div:first-child{grid-column:auto}}
 @media print{@page{margin:12mm}body{background:#fff;font-size:10pt}.exam-nav,.progress-bar,.submit-zone,dialog,.audio-card audio,.button{display:none!important}.exam-shell{width:100%;margin:0}.exam-hero,.section-card,.result-panel{box-shadow:none;border-radius:0}.exam-hero{color:#111;background:#fff;border-bottom:2px solid #111;padding:12px 0}.exam-hero p{color:#333}.exam-meta span{color:#333;border:1px solid #bbb}.section-card{border:0;padding:18px 0}.question,.passage,.audio-card,.mistake-card{break-inside:avoid}.result-panel{border:1px solid #bbb}}
+/* Window adaptation, 2026-11-04. Screen only; print rules above are unchanged. */
+@media screen{
+.site-shell,.exam-shell,.section-card,.task,.question,.passage,.result-panel,.mistake-card,.submit-zone,.intro-card,.test-card{min-width:0}
+.submit-zone>div,.mistake-heading>*,.answer-comparison>div,.result-grid>div,.result-overview>div,.choices label>*,.progress-bar>*{min-width:0}
+img,audio,video{max-width:100%}img,video{height:auto}
+pre{max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}
+.button,button{white-space:normal}
+/* Learner-entered answers, keys and explanations wrap inside their own card. */
+.question legend,.feedback,.mistake-prompt,.mistake-explanation,.answer-comparison strong,.short-answer span{overflow-wrap:anywhere}
+.choices label>span:last-child{overflow-wrap:anywhere}
+/* Any authored passage or result table scrolls in its own wrapper, never widening the pane. */
+.passage table:not([hidden]),.result-panel table:not([hidden]),.mistake-card table:not([hidden]){display:block;max-width:100%;min-width:0;overflow-x:auto;overflow-wrap:normal}
+/* Clear the sticky progress bar when a question, panel or field is scrolled to. */
+.question,.task,.section-card,.result-panel,.passage{scroll-margin-top:96px}
+}
+/* Reading panes, 2026-11-04.
+   Each reading task already holds its own passage plus its own six questions, so the
+   existing article.task is the pane pair: no wrapper is inserted and no node is moved.
+   That is deliberate — paper-editor.js anchors every saved annotation with an
+   elementPath() selector rooted at #exam-form, and syncPositions() hides any item whose
+   selector stops resolving, so adding a wrapper level would hide saved marks.
+   Panes need real width and real height to beat ordinary flow, hence both queries.
+   Screen only: print keeps the original passage-then-questions order from the DOM. */
+@media screen and (min-width:880px) and (min-height:560px){
+.section-card[data-section="Reading"] .task{
+ --reading-pane:min(72dvh,720px);
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+ column-gap:26px;row-gap:0;align-items:start;
+ max-height:var(--reading-pane);overflow:auto;scrollbar-gutter:stable
+}
+.section-card[data-section="Reading"] .task>*{grid-column:1;min-width:0}
+.section-card[data-section="Reading"] .task>header{grid-column:1/-1}
+/* The passage holds column 1 for the whole run of questions and stays open while they scroll. */
+.section-card[data-section="Reading"] .task>.passage{
+ grid-column:1;grid-row:2/span 13;
+ position:sticky;top:0;align-self:start;margin:0;
+ max-height:calc(var(--reading-pane) - 26px);
+ overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable
+}
+.section-card[data-section="Reading"] .task>.question{grid-column:2;margin:0 0 13px}
+.section-card[data-section="Reading"] .task>.question:last-of-type{margin-bottom:0}
+.section-card[data-section="Reading"] .task>.passage,.section-card[data-section="Reading"] .task>.question{scroll-margin-top:12px}
+}
+@media screen and (max-width:420px){
+.hero,.exam-hero{padding:22px 18px}
+.hero h1,.exam-hero h1{font-size:clamp(1.6rem,8.5vw,2.3rem);max-width:none}
+.hero p,.exam-hero p{font-size:.95rem}
+.exam-nav{flex-wrap:wrap;gap:2px 10px}
+.exam-meta{margin-top:12px;gap:6px}
+.exam-meta span{padding:4px 8px;font-size:.8rem}
+.instructions{padding:14px 15px;font-size:.93rem}
+/* Both labels get the full width instead of being squeezed into two columns. */
+.progress-bar{grid-template-columns:minmax(0,1fr);padding:10px 12px;gap:4px 10px}
+.section-card{padding:16px 12px}
+.section-head{padding-bottom:10px;margin-bottom:14px}
+.section-head h2{font-size:1.4rem}
+.task>header h3{font-size:1.15rem}
+.passage{padding:16px 15px}
+.result-panel h2{font-size:1.9rem}
+.mistake-heading{flex-wrap:wrap;gap:4px 12px}
+}
+/* Short windows, including 200% zoom and landscape phones: the header gives back answer space. */
+@media screen and (max-height:500px){
+.access-shell{min-height:100dvh;padding:12px}
+.access-card{padding:18px 20px;border-radius:16px}
+.access-card h1{font-size:clamp(1.4rem,3.4vw,2rem);margin:.1rem 0 .5rem}
+.access-card label{margin:12px 0 5px}
+.eyebrow{margin-bottom:4px}
+.site-shell{margin:12px auto 32px}
+.exam-shell{margin:10px auto 48px}
+.exam-nav{margin-bottom:8px}
+.hero,.exam-hero{padding:16px 20px;border-radius:14px}
+.hero h1,.exam-hero h1{font-size:clamp(1.3rem,3.2vw,1.9rem);line-height:1.12;margin:.1rem 0 .4rem;max-width:none}
+.hero p,.exam-hero p{margin:.25rem 0;font-size:.92rem}
+.exam-meta{margin-top:8px;gap:6px}
+.exam-meta span{padding:3px 8px;font-size:.78rem}
+.intro-card{margin:12px 0;padding:14px 16px}
+.instructions{margin:10px 0;padding:10px 13px;font-size:.9rem}
+.progress-bar{top:4px;margin:9px 0;padding:8px 12px;gap:5px 12px}
+.section-card{margin:12px 0}
+.section-head{padding-bottom:9px;margin-bottom:13px}
+.section-head h2{font-size:1.3rem}
+.task{margin:16px 0 24px}
+.task>header h3{font-size:1.1rem}
+.task>header p{margin:.2rem 0 .7rem}
+.result-panel h2{font-size:1.8rem}
+.question,.task,.section-card,.result-panel,.passage{scroll-margin-top:72px}
+}
+/* Narrow and short-window reading panes, 2026-11-04.
+   Same independent-pane contract as the wide layout, stacked instead of side by side:
+   the bounded task is the questions' scroller, the passage is sticky at its top with its
+   own bounded height and overflow, and the question rows run beneath it. The task header
+   scrolls away inside the task while the passage stays visible. Still no DOM change, so
+   every elementPath() annotation selector keeps resolving.
+   Applies whenever the wide pane query does not: narrow width, or any short window. */
+@media screen and (max-width:879px),screen and (min-width:880px) and (max-height:559px){
+.section-card[data-section="Reading"] .task{
+ --reading-pane:min(84dvh,720px);
+ --reading-passage:calc(var(--reading-pane) * .4);
+ max-height:var(--reading-pane);overflow:auto;overscroll-behavior-x:contain;
+ scrollbar-gutter:stable;
+ /* Keyboard focus and scrollIntoView land below the sticky passage, never behind it. */
+ scroll-padding-top:calc(var(--reading-passage) + 16px)
+}
+.section-card[data-section="Reading"] .task>.passage{
+ /* Already opaque; named here so the sticky layer has one themeable source of truth. */
+ --passage-bg:#f8faf8;background:var(--passage-bg);
+ position:sticky;top:0;z-index:3;
+ max-height:var(--reading-passage);min-height:4.6em;
+ overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;
+ margin:0 0 14px;
+ border-bottom:1px solid var(--line);
+ box-shadow:0 8px 16px -8px rgba(24,57,69,.22)
+}
+/* The container's scroll-padding does the offsetting; no second allowance here. */
+.section-card[data-section="Reading"] .task>.question{scroll-margin-top:0}
+.section-card[data-section="Reading"] .task>.question:last-of-type{margin-bottom:0}
+}
+/* Short windows keep the 40/60 passage-to-questions split on a smaller pane. */
+@media screen and (max-height:559px){
+.section-card[data-section="Reading"] .task{--reading-pane:min(88dvh,430px)}
+}
