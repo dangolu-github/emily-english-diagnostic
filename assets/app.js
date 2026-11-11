@@ -11,6 +11,9 @@
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let waitingNonce = "";
   let receiptTimer = 0;
+  const access = window.EmilyAccess || null;
+  const submitEnvironment = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname) ? "qa" : "production";
+  const HELD_TEXT = "Submitted. Waiting for your teacher to review.";
 
   const uuid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const attemptId = localStorage.getItem(attemptKey) || `attempt-${uuid().toLowerCase()}`;
@@ -137,7 +140,8 @@
       attemptId,
       nonce: waitingNonce,
       student: "Emily",
-      environment: /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname) ? "qa" : "production",
+      environment: submitEnvironment,
+      credential: access ? access.credential() : "",
       answers: answers()
     };
     const receiptForm = document.getElementById("receipt-form");
@@ -157,12 +161,62 @@
     const result = event.data;
     if (!allowed || !result || result.type !== "emily-diagnostic-result" || result.assignmentId !== exam.id || result.nonce !== waitingNonce) return;
     clearTimeout(receiptTimer); waitingNonce = "";
-    if (!result.ok) { submitButton.disabled = false; status.textContent = result.message || "提交失败；草稿仍在本机。"; return; }
+    if (!result.ok) {
+      submitButton.disabled = false;
+      if (result.reason === "unknown" || result.reason === "revoked") {
+        if (access) access.forget();
+        status.textContent = "请回到首页重新输入密码，然后再提交。草稿仍保存在本机。 ";
+        const link = document.createElement("a");
+        link.href = "../../?locked=1";
+        link.className = "submit-status-link";
+        link.textContent = "回到首页";
+        status.append(link);
+        return;
+      }
+      status.textContent = result.message || "提交失败；草稿仍在本机。";
+      return;
+    }
     localStorage.setItem(resultKey, JSON.stringify(result));
     renderResult(result);
   });
 
+  function lockAnswers() {
+    document.body.classList.add("submitted");
+    fields.forEach((field) => { field.disabled = true; });
+    document.querySelectorAll("audio").forEach((audio) => { audio.pause(); });
+    submitButton.disabled = true;
+  }
+
+  // Submitted but not yet released: answers stay read-only, with no score and no marking.
+  function renderHeld(result) {
+    lockAnswers();
+    const message = result.heldMessage || HELD_TEXT;
+    status.textContent = message;
+    const panel = document.getElementById("result-panel");
+    panel.hidden = false;
+    panel.classList.add("result-held");
+    const receipt = result.receiptTime ? new Date(result.receiptTime).toLocaleString() : "";
+    const attempt = String(result.attemptId || "").slice(-8);
+    panel.innerHTML = `<p class="eyebrow">SUBMISSION RECEIPT</p><h2>${escapeHtml(message)}</h2>${receipt ? `<p class="small">Receipt: ${escapeHtml(receipt)} · Attempt ${escapeHtml(attempt)}</p>` : ""}`;
+    panel.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+
+  async function refreshHeld(stored) {
+    if (!access || !access.credential()) return;
+    try {
+      const reply = await access.call("getResult", {credential: access.credential(), assignmentId: exam.id, attemptId: stored.attemptId || attemptId, environment: submitEnvironment});
+      if (reply && reply.ok && reply.found && reply.result && reply.result.ok && !reply.result.held && reply.result.assignmentId === exam.id) {
+        localStorage.setItem(resultKey, JSON.stringify(reply.result));
+        renderResult(reply.result);
+      }
+    } catch (_) {
+      // The waiting receipt stays on screen; the next visit asks again.
+    }
+  }
+
   function renderResult(result) {
+    if (result.held || !Array.isArray(result.details)) { renderHeld(result); return; }
+    document.getElementById("result-panel").classList.remove("result-held");
     const details = Array.isArray(result.details) ? result.details : [];
     const answered = details.filter((detail) => String(detail.submitted || "").trim()).length;
     const unanswered = Math.max(0, Number(result.total) - answered);
@@ -174,10 +228,7 @@
           return `<article class="mistake-card"><div class="mistake-heading"><strong>${escapeHtml(detail.id)}</strong><span>${escapeHtml(detail.section)}</span></div><p class="mistake-prompt">${escapeHtml(item ? item.prompt : detail.id)}</p><div class="answer-comparison"><div><span>${isChoice ? "你的选择" : "你的作答"}</span><strong>${escapeHtml(displayAnswer(detail.id, detail.submitted))}</strong></div><div><span>${isChoice ? "正确选项" : "参考答案"}</span><strong>${escapeHtml(displayAnswer(detail.id, detail.answer))}</strong></div></div><p class="mistake-explanation"><strong>解析：</strong>${escapeHtml(detail.explanation)}</p></article>`;
         }).join("")}</div></section>`
       : `<section class="mistake-review"><h3>错题批改</h3><p>本次没有错题或未作答题。</p></section>`;
-    document.body.classList.add("submitted");
-    fields.forEach((field) => { field.disabled = true; });
-    document.querySelectorAll("audio").forEach((audio) => { audio.pause(); });
-    submitButton.disabled = true;
+    lockAnswers();
     status.textContent = result.duplicate ? "已恢复原提交回执。" : "提交成功，已完成自动批改。";
     const panel = document.getElementById("result-panel");
     panel.hidden = false;
@@ -200,6 +251,9 @@
   restoreDraft(); updateProgress(); setupAudioLimits();
   try {
     const stored = JSON.parse(localStorage.getItem(resultKey) || "null");
-    if (stored && stored.assignmentId === exam.id) renderResult(stored);
+    if (stored && stored.assignmentId === exam.id) {
+      renderResult(stored);
+      if (stored.held || !Array.isArray(stored.details)) refreshHeld(stored);
+    }
   } catch (_) {}
 })();

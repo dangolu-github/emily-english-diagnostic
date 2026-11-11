@@ -6,8 +6,9 @@
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta name="description" content="Emily A2 and B1 English diagnostic tests">
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="assets/styles.css?v=20261104-1">
-  <script src="assets/access.js?v=20260820-1" defer></script>
+  <link rel="stylesheet" href="assets/styles.css?v=20261111-1">
+  <script src="assets/config.js?v=20261111-1" defer></script>
+  <script src="assets/access.js?v=20261111-1" defer></script>
   <title>Emily English Diagnostic</title>
 </head>
 <body>
@@ -15,7 +16,7 @@
     <section class="access-card" aria-labelledby="access-title">
       <p class="eyebrow">PRIVATE LEARNING LINK</p>
       <h1 id="access-title">Enter your password</h1>
-      <p>请输入老师发给你的页面密码。密码只在这个浏览器里检查，不会随答卷提交。</p>
+      <p>请输入老师发给你的页面密码。这个浏览器会记住你，以后打开不用再输入。</p>
       <form id="access-form" novalidate>
         <label for="access-password">Password</label>
         <div class="access-controls">
@@ -29,6 +30,7 @@
   <div id="diagnostic-content" hidden>
     <a class="skip-link" href="#main">跳到主要内容</a>
     <main class="site-shell" id="main">
+    <p class="access-retry" id="access-retry" role="status" hidden><span>暂时无法连接，请检查网络后重试。</span> <button class="button button-secondary" type="button" id="access-retry-button">重试</button></p>
     <header class="hero">
       <p class="eyebrow">ENGLISH DIAGNOSTIC</p>
       <h1>Emily's English starting point</h1>
